@@ -1,5 +1,16 @@
 open Ppxlib
 
+module Attr = struct
+  let value =
+    Attribute.declare
+      "ppx_enum.enum.value"
+      Attribute.Context.constructor_declaration
+      Ast_pattern.(single_expr_payload (estring __))
+      (fun x -> x)
+
+  let packed = [Attribute.T value]
+end
+
 module Str = struct
   let string_to_constant_expression ~loc ~str =
     Ast_builder.Default.pexp_constant
@@ -23,19 +34,39 @@ module Str = struct
       {txt = Lident str; loc}
       None
 
-  let to_string_case_from_constructor ~loc constructor =
-    let {pcd_name = {txt = value_name; _}; _} = constructor in
-    let lhs = string_to_constructor_pattern ~loc ~str:value_name in
-    let rhs = string_to_constant_expression ~loc ~str:(String.lowercase_ascii value_name) in
+  let constructor_name_and_value ({pcd_name = {txt = name; _}; _} as constructor) =
+    let attribute_value = Attribute.get Attr.value constructor in
+    let value =
+      match attribute_value with
+      | Some value -> value
+      | None -> String.lowercase_ascii name
+    in
+    (name, value)
+
+  let to_string_case_from_name_and_value ~loc (name, value) =
+    let lhs = string_to_constructor_pattern ~loc ~str:name in
+    let rhs = string_to_constant_expression ~loc ~str:value in
     Ast_builder.Default.case ~lhs ~guard:None ~rhs
+
+  let assert_no_duplicate_values ~loc constructor_details =
+    let unique_values = List.sort_uniq String.compare @@ snd @@ List.split constructor_details in
+    if List.compare_lengths constructor_details unique_values != 0
+    then
+        Raise.Enum.errorf ~loc "cannot derive enum. Enums must have unique values"
+
+  let to_string_constructor_cases ~loc constructors =
+    let constructor_details = List.map constructor_name_and_value constructors in
+    assert_no_duplicate_values ~loc constructor_details;
+    List.map (to_string_case_from_name_and_value ~loc) constructor_details
 
   let to_string_function ~loc ~type_name ~constructors =
     let function_name = Utils.to_string_function_name ~enum_name:type_name in
     let pat = Ast_builder.Default.ppat_var ~loc {txt=function_name; loc} in
+    let cases =to_string_constructor_cases ~loc constructors in
     let expr =
       Ast_builder.Default.pexp_function
         ~loc
-        (List.map (to_string_case_from_constructor ~loc) constructors)
+        cases
     in
     let value_description =
       Ast_builder.Default.value_binding
@@ -45,10 +76,8 @@ module Str = struct
     in
     Ast_builder.Default.pstr_value ~loc Nonrecursive [value_description]
 
-  let constructor_name {pcd_name = {txt = name; _}; _} = name
-
-  let from_string_case_from_name ~loc ~raises name =
-    let lhs = string_to_constant_pattern ~loc ~str:(String.lowercase_ascii name) in
+  let from_string_case_from_name_and_value ~loc ~raises (name, value) =
+    let lhs = string_to_constant_pattern ~loc ~str:value in
     let value_t = string_to_constructor_expression ~loc ~str:name in
     let rhs =
       if raises then
@@ -59,8 +88,8 @@ module Str = struct
     Ast_builder.Default.case ~lhs ~guard:None ~rhs
 
   let from_string_constructor_cases ~loc ~raises constructors =
-    let constructor_names = List.map constructor_name constructors in
-    List.map (from_string_case_from_name ~loc ~raises) constructor_names
+    let constructor_details = List.map constructor_name_and_value constructors in
+    List.map (from_string_case_from_name_and_value ~loc ~raises) constructor_details
 
   let invalid_case_for_from_string ~loc ~raises ~function_name =
     let lhs = [%pat? s] in
@@ -193,32 +222,48 @@ module Sig = struct
     let function_name = Utils.from_string_exn_function_name ~enum_name:type_name in
     from_string_function_val_base ~raises:true ~function_name ~type_name
 
-  let from_enummable_variant ~loc ~type_ =
-    let {ptype_name = {txt = type_name; _}; _} = type_ in
+  let assert_no_values_for_constructors ~loc constructors =
+    let value_opts = List.map (Attribute.get Attr.value) constructors in
+    let value_present =
+      List.exists
+        ( function
+          | Some _ -> true
+          | None -> false
+        )
+        value_opts
+    in
+    if value_present
+    then
+      Raise.Enum.errorf ~loc "custom enum values must not be declared in signatures."
+
+
+  let from_enummable_variant ~loc ~type_name =
     [ to_string_function_val ~loc ~type_name
     ; from_string_function_val ~loc ~type_name
     ; from_string_exn_function_val ~loc ~type_name
     ]
 
-  let from_variant ~loc ~type_ =
+  let from_type_declaration ~loc type_ =
     match type_ with
-    | {ptype_kind = Ptype_variant constructors; _} when not (Utils.constructors_are_bare constructors)
+    | { ptype_kind = Ptype_variant constructors
+      ; ptype_params = []
+      ; ptype_name = {txt = type_name; _}
+      ; ptype_loc
+      ; _
+      }
+      when (Utils.constructors_are_bare constructors)
+      ->
+        assert_no_values_for_constructors ~loc:ptype_loc constructors;
+        from_enummable_variant ~loc:ptype_loc ~type_name
+    | {ptype_kind = Ptype_variant _; ptype_params = []; _}
       ->
         Raise.Enum.unhandled_type_kind ~loc "variant with arguments"
-    | {ptype_params; _} when ((List.length ptype_params) > 0)
+    | {ptype_kind = Ptype_variant _; ptype_params = _::_; _}
       ->
         Raise.Enum.unhandled_type_kind ~loc "parametrized variant"
-    | _
-      ->
-        from_enummable_variant ~loc ~type_
-
-  let from_type_declaration ~loc type_ =
-    let {ptype_kind; ptype_loc; _} = type_ in
-    match ptype_kind with
-    | Ptype_variant _ -> from_variant ~loc:ptype_loc ~type_
-    | Ptype_record _ -> Raise.Enum.unhandled_type_kind ~loc "record"
-    | Ptype_abstract -> Raise.Enum.unhandled_type_kind ~loc "abstract"
-    | Ptype_open -> Raise.Enum.unhandled_type_kind ~loc "open"
+    | {ptype_kind = Ptype_record _; _} -> Raise.Enum.unhandled_type_kind ~loc "record"
+    | {ptype_kind = Ptype_abstract; _} -> Raise.Enum.unhandled_type_kind ~loc "abstract"
+    | {ptype_kind = Ptype_open; _} -> Raise.Enum.unhandled_type_kind ~loc "open"
 
   let from_type_decl ~loc ~path:_ (_rec_flag, type_declarations) =
     List.flatten @@ List.map (from_type_declaration ~loc) type_declarations
@@ -226,7 +271,9 @@ end
 
 
 let from_str_type_decl =
-  Deriving.Generator.make_noarg Str.from_type_decl
+  Deriving.Generator.make_noarg
+    ~attributes:Attr.packed
+    Str.from_type_decl
 
 let from_sig_type_decl =
   Deriving.Generator.make_noarg Sig.from_type_decl
