@@ -58,9 +58,15 @@ module Str = struct
     Ast_builder.Default.case ~lhs ~guard:None ~rhs
 
   let invalid_case_for_from_string ~loc ~raises ~function_name =
-    let lhs = Ast_builder.Default.ppat_any ~loc in
+    let lhs = [%pat? s] in
     let error_message =
-      [%expr __MODULE__ ^ [%e string_to_constant_expression ~loc ~str:("." ^ function_name)]]
+      [%expr
+        Printf.sprintf
+          "Unexpected value for %s.%s: %s"
+          __MODULE__
+          [%e string_to_constant_expression ~loc ~str:function_name]
+          s
+      ]
     in
     let rhs =
       if raises then
