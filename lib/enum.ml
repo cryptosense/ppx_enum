@@ -45,10 +45,11 @@ module Str = struct
     in
     Ast_builder.Default.pstr_value ~loc Nonrecursive [value_description]
 
-  let from_string_case_from_constructor ~loc ~raises constructor =
-    let {pcd_name = {txt = value_name; _}; _} = constructor in
-    let lhs = string_to_constant_pattern ~loc ~str:(String.lowercase_ascii value_name) in
-    let value_t = string_to_constructor_expression ~loc ~str:value_name in
+  let constructor_name {pcd_name = {txt = name; _}; _} = name
+
+  let from_string_case_from_name ~loc ~raises name =
+    let lhs = string_to_constant_pattern ~loc ~str:(String.lowercase_ascii name) in
+    let value_t = string_to_constructor_expression ~loc ~str:name in
     let rhs =
       if raises then
         value_t
@@ -56,6 +57,10 @@ module Str = struct
         [%expr Ok [%e value_t]]
     in
     Ast_builder.Default.case ~lhs ~guard:None ~rhs
+
+  let from_string_constructor_cases ~loc ~raises constructors =
+    let constructor_names = List.map constructor_name constructors in
+    List.map (from_string_case_from_name ~loc ~raises) constructor_names
 
   let invalid_case_for_from_string ~loc ~raises ~function_name =
     let lhs = [%pat? s] in
@@ -78,7 +83,7 @@ module Str = struct
 
   let from_string_function_base ~loc ~raises ~function_name ~constructors =
     let pat = Ast_builder.Default.ppat_var ~loc {txt=function_name; loc} in
-    let cases = List.map (from_string_case_from_constructor ~loc ~raises) constructors in
+    let cases = from_string_constructor_cases ~loc ~raises constructors in
     let cases = cases @ [invalid_case_for_from_string ~loc ~raises ~function_name] in
     let expr = Ast_builder.Default.pexp_function ~loc cases in
     let value_description =
