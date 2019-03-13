@@ -2,4 +2,4 @@
 
 # ppx_enum
 
-`ppx_enum` is an OCaml preprocessor to derive enum-like modules from variant definitaions.
+`ppx_enum` is an OCaml preprocessor to derive enum-like modules from variant definitions.
