@@ -26,19 +26,19 @@ module S :
     type t =
       | Foo 
       | Bar [@@deriving enum]
-    let to_string = function | Foo -> "foo" | Bar -> "bar"
+    let to_string = function | Foo -> "Foo" | Bar -> "Bar"
     let from_string =
       function
-      | "foo" -> Ok Foo
-      | "bar" -> Ok Bar
+      | "Foo" -> Ok Foo
+      | "Bar" -> Ok Bar
       | s ->
           Error
             (Printf.sprintf "Unexpected value for %s.%s: %s" __MODULE__
                "from_string" s)
     let from_string_exn =
       function
-      | "foo" -> Foo
-      | "bar" -> Bar
+      | "Foo" -> Foo
+      | "Bar" -> Bar
       | s ->
           invalid_arg
             (Printf.sprintf "Unexpected value for %s.%s: %s" __MODULE__
@@ -46,19 +46,19 @@ module S :
     type simple_enum =
       | Foo 
       | Bar [@@deriving enum]
-    let simple_enum_to_string = function | Foo -> "foo" | Bar -> "bar"
+    let simple_enum_to_string = function | Foo -> "Foo" | Bar -> "Bar"
     let simple_enum_from_string =
       function
-      | "foo" -> Ok Foo
-      | "bar" -> Ok Bar
+      | "Foo" -> Ok Foo
+      | "Bar" -> Ok Bar
       | s ->
           Error
             (Printf.sprintf "Unexpected value for %s.%s: %s" __MODULE__
                "simple_enum_from_string" s)
     let simple_enum_from_string_exn =
       function
-      | "foo" -> Foo
-      | "bar" -> Bar
+      | "Foo" -> Foo
+      | "Bar" -> Bar
       | s ->
           invalid_arg
             (Printf.sprintf "Unexpected value for %s.%s: %s" __MODULE__

@@ -39,7 +39,7 @@ module Str = struct
     let value =
       match attribute_value with
       | Some value -> value
-      | None -> String.lowercase_ascii name
+      | None -> name
     in
     (name, value)
 
