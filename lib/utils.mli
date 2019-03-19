@@ -8,6 +8,11 @@ val to_string_function_name : enum_name: string -> string
  *)
 val from_string_function_name : enum_name: string -> string
 
+(** The from_string_exn function should be named foo_from_string_exn for variant foo, and
+ *  just from_string_exn for the special t variant
+ *)
+val from_string_exn_function_name : enum_name: string -> string
+
 (** Test whether a constructor is a "bare" constructor - that is it is
  *  declared in the form
  *  | Name
