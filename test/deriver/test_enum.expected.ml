@@ -1,54 +1,17 @@
-module type Sig_module  =
-  sig
-    type simple_enum =
-      | Foo 
-      | Bar [@@deriving enum]
-    val simple_enum_to_string : simple_enum -> string
-    val simple_enum_from_string : string -> simple_enum
-  end
-module type Sig_module_with_t_type  =
+module S :
   sig
     type t =
       | Foo 
       | Bar [@@deriving enum]
     val to_string : t -> string
-    val from_string : string -> t
-  end
-type simple_enum =
-  | Foo 
-  | Bar [@@deriving enum]
-let simple_enum_to_string = function | Foo -> "foo" | Bar -> "bar"
-let simple_enum_from_string =
-  function
-  | "foo" -> Foo
-  | "bar" -> Bar
-  | _ -> invalid_arg (__MODULE__ ^ ".simple_enum_from_string")
-module Sig_module_with_subsequent_implementation :
-  sig
+    val from_string : string -> (t, string) result
+    val from_string_exn : string -> t
     type simple_enum =
       | Foo 
       | Bar [@@deriving enum]
     val simple_enum_to_string : simple_enum -> string
-    val simple_enum_from_string : string -> simple_enum
-  end =
-  struct
-    type simple_enum =
-      | Foo 
-      | Bar [@@deriving enum]
-    let simple_enum_to_string = function | Foo -> "foo" | Bar -> "bar"
-    let simple_enum_from_string =
-      function
-      | "foo" -> Foo
-      | "bar" -> Bar
-      | _ -> invalid_arg (__MODULE__ ^ ".simple_enum_from_string")
-  end 
-module Sig_module_with_subsequent_implementation_and_t_type :
-  sig
-    type t =
-      | Foo 
-      | Bar [@@deriving enum]
-    val to_string : t -> string
-    val from_string : string -> t
+    val simple_enum_from_string : string -> (simple_enum, string) result
+    val simple_enum_from_string_exn : string -> simple_enum
   end =
   struct
     type t =
@@ -57,7 +20,38 @@ module Sig_module_with_subsequent_implementation_and_t_type :
     let to_string = function | Foo -> "foo" | Bar -> "bar"
     let from_string =
       function
+      | "foo" -> Ok Foo
+      | "bar" -> Ok Bar
+      | s ->
+          Error
+            (Printf.sprintf "Unexpected value for %s.%s: %s" __MODULE__
+               "from_string" s)
+    let from_string_exn =
+      function
       | "foo" -> Foo
       | "bar" -> Bar
-      | _ -> invalid_arg (__MODULE__ ^ ".from_string")
+      | s ->
+          invalid_arg
+            (Printf.sprintf "Unexpected value for %s.%s: %s" __MODULE__
+               "from_string_exn" s)
+    type simple_enum =
+      | Foo 
+      | Bar [@@deriving enum]
+    let simple_enum_to_string = function | Foo -> "foo" | Bar -> "bar"
+    let simple_enum_from_string =
+      function
+      | "foo" -> Ok Foo
+      | "bar" -> Ok Bar
+      | s ->
+          Error
+            (Printf.sprintf "Unexpected value for %s.%s: %s" __MODULE__
+               "simple_enum_from_string" s)
+    let simple_enum_from_string_exn =
+      function
+      | "foo" -> Foo
+      | "bar" -> Bar
+      | s ->
+          invalid_arg
+            (Printf.sprintf "Unexpected value for %s.%s: %s" __MODULE__
+               "simple_enum_from_string_exn" s)
   end 
