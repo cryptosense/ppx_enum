@@ -50,8 +50,7 @@ module Str = struct
 
   let assert_no_duplicate_values ~loc constructor_details =
     let unique_values = List.sort_uniq String.compare @@ snd @@ List.split constructor_details in
-    if List.compare_lengths constructor_details unique_values != 0
-    then
+    if List.compare_lengths constructor_details unique_values != 0 then
         Raise.Enum.errorf ~loc "cannot derive enum. Enums must have unique values"
 
   let to_string_constructor_cases ~loc constructors =
@@ -88,8 +87,9 @@ module Str = struct
     Ast_builder.Default.case ~lhs ~guard:None ~rhs
 
   let from_string_constructor_cases ~loc ~raises constructors =
-    let constructor_details = List.map constructor_name_and_value constructors in
-    List.map (from_string_case_from_name_and_value ~loc ~raises) constructor_details
+    constructors
+    |> List.map constructor_name_and_value
+    |> List.map (from_string_case_from_name_and_value ~loc ~raises)
 
   let invalid_case_for_from_string ~loc ~raises ~function_name =
     let lhs = [%pat? s] in
@@ -232,8 +232,7 @@ module Sig = struct
         )
         value_opts
     in
-    if value_present
-    then
+    if value_present then
       Raise.Enum.errorf ~loc "custom enum values must not be declared in signatures."
 
 
@@ -251,7 +250,7 @@ module Sig = struct
       ; ptype_loc
       ; _
       }
-      when (Utils.constructors_are_bare constructors)
+      when Utils.constructors_are_bare constructors
       ->
         assert_no_values_for_constructors ~loc:ptype_loc constructors;
         from_enummable_variant ~loc:ptype_loc ~type_name
