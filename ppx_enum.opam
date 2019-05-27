@@ -21,3 +21,6 @@ depends: [
 ]
 tags: ["org:cryptosense"]
 synopsis: "PPX to derive enum-like modules from variant type definitions"
+description: """
+This PPX derives simple enum-like modules from variant type definitions.
+"""
