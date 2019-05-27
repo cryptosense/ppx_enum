@@ -1,5 +1,5 @@
 opam-version: "2.0"
-maintainer: "James Owen <jamesowen@outlook.com>"
+maintainer: "Cryptosense <opensource@cryptosense.com>"
 author: "James Owen <jamesowen@outlook.com>"
 homepage: "https://github.com/cryptosense/ppx_enum"
 bug-reports: "https://github.com/cryptosense/ppx_enum/issues"
