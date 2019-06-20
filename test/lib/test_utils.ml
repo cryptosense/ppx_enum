@@ -30,7 +30,7 @@ end
 
 
 let test_constructor_is_bare =
-  let open Parsetree in
+  let open Ppxlib in
   let test ~constructor ~expected ctxt =
     let actual = Ppx_enum_lib.Utils.constructor_is_bare constructor in
     assert_equal ~ctxt ~cmp:[%eq: bool] ~printer:[%show: bool] expected actual

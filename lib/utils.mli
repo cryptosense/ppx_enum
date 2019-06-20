@@ -18,7 +18,7 @@ val from_string_exn_function_name : enum_name: string -> string
  *  | Name
  *  for some name
  *)
-val constructor_is_bare : Parsetree.constructor_declaration -> bool
+val constructor_is_bare : Ppxlib.constructor_declaration -> bool
 
 (** Test whether a list of constructors are all "bare" *)
-val constructors_are_bare : Parsetree.constructor_declaration list -> bool
+val constructors_are_bare : Ppxlib.constructor_declaration list -> bool
